@@ -1,0 +1,663 @@
+---
+title: "Predicting the Over/Under Score for Points on NBA Players"
+output:
+  html_document: default
+---
+
+  Many sportsbooks across the world have options for people to place a bet on whether a certain player will get over or under X amount of points in a given game. We will try to find the best predictors and see if we can accurately predict whether a player will get over or under based on other factors. 
+  
+  We will examine two players, Damian Lillard and Robert Covington. Damian Lillard is a star player for the Portland Trail Blazers and Robert Covington is an important role player on the same team as Damian, the Blazers. 
+  
+  The data was collected from basketball-reference.com and teamrankings.com consisting of game logs dating back to the 2017-2018 season to the end of the 2020-2021 season, including postseason games if the team made the playoffs. Game logs contain a wealth of information such as Points, Assists, Steals and I attached more information from teamrankings.com that contain the opponent's defensive abilities for each specific game log. 
+  
+  The data has been cleaned and transformed through a Python script and exported into 2 csv files, Lillard_data.csv and Covington_data.csv. For those who are not familiar with basketball stats and want to gain a clear understanding of all the variables in these datasets, please click here. 
+
+
+# Damian Lillard
+
+Let's start off with Damian Lillard. His Over/Under split is at 27.5 Points.
+
+```{r}
+#import some packages
+
+library(psych)
+library(leaps)
+library(caret)
+library(tree)
+library(rattle)
+library(gbm)
+library(klaR)
+library(randomForest)
+library(caTools)
+library(MLeval) 
+```
+
+
+
+### Exploratory Data Analysis
+```{r}
+
+#Data Cleaning
+
+Lillard_data <- read.csv("/Users/matthew_macwan/Downloads/CIS/NBA_Over_Under_Classification/Lillard_data.csv", header = TRUE)
+
+Lillard_data <- data.frame(Lillard_data)
+Lillard_data <- na.omit(Lillard_data) 
+
+
+qplot(PTS,X,data=Lillard_data)
+
+pairs.panels(Lillard_data[2:15])
+pairs.panels(Lillard_data[16:29])
+
+Lillard_data$Over.Under <- as.integer(Lillard_data$Over.Under)
+hist(Lillard_data$Over.Under,col="coral")
+prop.table(table(Lillard_data$Over.Under))
+
+Lillard_data$Over.Under <- as.factor(Lillard_data$Over.Under)
+
+levels(Lillard_data$Over.Under) <- c("Under","Over")
+
+```
+
+### Train/Test Split 
+```{r}
+
+set.seed(30) 
+
+sample = sample.split(Lillard_data$PTS, SplitRatio = .80)
+train = subset(Lillard_data, sample == TRUE)
+test  = subset(Lillard_data, sample == FALSE)
+
+#Cross Validation 
+
+ctrl <- trainControl(method="cv", number = 5, classProbs=T, savePredictions = T)
+```
+
+Cross validation is necessary for these datasets since they are not very large. I chose to perform K-fold cross validation with 5 folds since it does not suffer from too much bias nor variability compared to LOOCV approach and validation set approach. 
+
+Next, we will perform feature selection to select the variables to use in our models. 
+
+We will try three different methods for feature selection:
+
+ -feature importance
+ -recursive feature elimination 
+ -best subset selection
+
+### Feature Selection
+```{r}
+
+  #rank features by importance 
+
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+
+feature_sel <- train(Over.Under~. - PTS - X - GmSc, data=train, method="lvq", 
+               preProcess="scale", trControl=control)
+
+importance <- varImp(feature_sel, scale=FALSE)
+
+print(importance)
+plot(importance)
+```
+
+
+
+```{r}
+#recursive feature elimination
+
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+
+results <- rfe(train[c(1:20,23,24,25,26,27,28)], train[,29], sizes=c(1:15), 
+               rfeControl=control)
+
+print(results)
+
+predictors(results)
+plot(results, type=c("g", "o"))
+
+```
+
+
+
+```{r}
+  #best subset selection
+
+Lillard_bss = regsubsets(Over.Under~. - PTS - X - GmSc, data=train, nvmax=7)
+
+summary(Lillard_bss)
+```
+
+#### Analysis 
+
+* For both players, I've tried out each of the variables from best subset selection and recursive      feature elimination and decided to use the variables from recursive feature elimination since they   deliver a slightly higher accuracy on the test set.
+
+* recursive feature elimination delivers perfect accuracy on the logistic regression model.
+
+### Logistic Regression 
+```{r}
+
+  
+lg <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P,
+            data=train, method = "glm", family="binomial",trControl=ctrl, 
+            maxit = 100)
+
+print(lg)
+```
+
+
+```{r}
+  #let's train the final model on the entire training set and test set 
+
+lg_final=glm(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P, data=train, 
+             family=binomial, maxit = 100)
+
+  #check the deviance drop off 
+
+anova(lg_final, test="Chisq")
+
+log.probs <- predict(lg_final, test, type="response")
+
+predicted = ifelse(log.probs > 0.5,'Over','Under')
+predicted = as.factor(predicted)
+confusionMatrix(test$Over.Under,predicted)
+
+```
+#### Analysis 
+
+ * There are some warning messages but they are most likely arising due to the small size of our       datasets and some outliers in the dataset. Simply collecting more data would be the solution to      this problem.
+ 
+ * The anova test tells us how the deviance drops with each variable. FG, FTA, X3PA and FT are the      variables that are statistically significant and contribute immensely in reducing deviance.
+ 
+ * The Logistic Regression model predicts the Over/Under perfectly on the test set.
+
+
+### Support Vector Machine 
+```{r}
+
+svc <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P,data=train, 
+             method="svmLinear",preProcess = c("center","scale"),trControl=ctrl)
+
+print(svc)
+
+  #let's perform grid search to find the optimal value for C
+
+grid <- expand.grid(C = c(0,0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 
+                          1.75, 2,5))
+
+svm_grid <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P,
+                         data = train, method = "svmLinear", tuneGrid = grid,
+                         preProcess = c("center", "scale"),trControl=ctrl)
+
+svm_grid$finalModel
+plot(svm_grid)
+```
+
+```{r}
+
+  #let's train the final model on the entire training set and test set
+
+final_grid <- expand.grid(C = c(1.25))
+
+svm_final <- train(Over.Under~FG + FTA + FT + FG_Percent + X3PA + FGA + X3P, 
+                  data = train, method = "svmLinear", tuneGrid = final_grid,
+                  preProcess = c("center", "scale"))
+
+svm_final
+
+
+SVM_pred <- predict(svm_final, newdata = test)
+confusionMatrix(test$Over.Under,SVM_pred)
+```
+#### Analysis 
+
+* After scaling the data which is recommended for support vector machines, the best value for C given   by grid search is 1.25. 
+
+     + C: refers to how wide or narrow we want our support vectors to be. As the C increases, the              width between the 2 support vectors decreases. A smaller C is better since it generalizes            better.
+
+    + Side note: Our dataset is not large so performing grid search is possible. However, as the                      dataset grows, a better approach is to use randomized search or halving grid search                  to reduce runtime.
+
+* We see that the accuracy from the training set is 0.97 and the test set being .951. Performing       slightly worse than the logistic regression. 
+
+
+
+
+### Decision Tree 
+```{r}
+
+dt <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P,data=train, 
+            method="rpart",trControl=ctrl)
+
+print(dt)
+
+dt_pred <- predict(dt, newdata = test)
+confusionMatrix(test$Over.Under,dt_pred)
+```
+
+```{r}
+#let's plot the tree
+
+Lillard.tree=tree(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P,train)
+
+plot(Lillard.tree)
+text(Lillard.tree, pretty=0)
+
+```
+#### Analysis 
+
+* Up to this point, we see that the decision tree performed the worst so far with a test set accuracy   of 0.887. 
+
+* One positive about trees compared to other machine learning algorithms is its ability to be          explained and understood by people are not data scientists. The plot of the decision tree shows      where each node was split and at what value, ultimately leading to the terminal nodes of an Over or   Under decision. 
+
+* Decision trees can be improved by using boosting and bagging techniques which is what we will        perform next.
+
+### Stochastic Gradient Boost
+```{r}
+
+sgb <- train(Over.Under~.- PTS - X - GmSc,data=train,method="gbm",trControl=ctrl)
+
+print(sgb)
+
+```
+
+
+```{r}
+
+  #let's train the final model on the entire training set and test set 
+
+final_grid <- expand.grid(n.trees = c(150), 
+                          interaction.depth = c(2),
+                          shrinkage = c(0.1), n.minobsinnode = 10)
+
+sgb_final <- train(Over.Under~.- PTS - X - GmSc,data=train,method="gbm",
+                   tuneGrid = final_grid)
+
+summary(sgb_final)
+
+sgb.predict <- predict(sgb_final, newdata = test)
+confusionMatrix(test$Over.Under,sgb.predict)
+```
+#### Analysis 
+
+* Grid search gives us the optimal hyper-parameters for the final model which is n.trees = 150,        interaction.depth = 3, shrinkage = 0.1. The accuracy was 0.9677.
+
+    + n.trees: The number of trees built.
+    
+    + interaction.depth: the depth of each tree.
+    
+    + shrinkage: the learning rate. A smaller shrinkage value is always better than a larger one but                  this comes at a trade off of runtime and storage. Choose an ideal value for                          shrinkage. 0.1 works well in this situation.
+
+* The test set accuracy was slightly better at 0.9677.
+
+
+
+### Random Forest
+```{r}
+
+rf <- train(Over.Under~.- PTS - X - GmSc,data=train,method="rf",trControl=ctrl)
+
+print(rf)
+
+  #let's perform grid search to find more optimal values for 'mtry'
+
+tunegrid <- expand.grid(.mtry = (1:15)) 
+
+rf_grid <- train(Over.Under ~.- PTS - X, data = train, method = 'rf',
+                       tuneGrid = tunegrid,trControl=ctrl)
+
+rf_grid$finalModel
+
+```
+
+
+```{r}
+
+  #let's train the final model on the entire training set and test set 
+
+rf_final <- randomForest(Over.Under ~ .- PTS - X - GmSc, data = train, mtry = 2)
+
+rf.predict <- predict(rf_final, test, type = "response")
+confusionMatrix(test$Over.Under,rf.predict)
+
+```
+
+
+
+
+
+```{r}
+#let's plot ROC curves of the Decision Tree, SGB and Random Forest to evaluate 
+#how the bagging and boosting techniques improved model performance
+
+roc_plots <- evalm(list(dt,sgb,rf_grid),gnames=c('Decison Tree','Stochastic GB',
+                                                 'Random Forest'))
+```
+#### Analysis 
+
+* Grid search found the optimal value for mtry = 2. We see that accuracy slightly decreases as mtry    increases.
+
+    + mtry: number of variables randomly sampled at each split. 
+
+* The test set for the random forest model is 0.9677.
+
+* We also plotted the some curves for the decision tree, stochastic gradient boost model and the       random forest algorithm. Let's focus in on the following 2:
+
+    + ROC Curves: We see that the SGB and Random forest models offer a much better ratio at around                     90% recall and 5% false positive rate. The decision tree clearly performs worse                      than the other 2. 
+    
+    + Precision/Recall Curves: We see that the random forest model has the highest area under the                                   curve (AUC) at 0.95. Precision starts to fall rapidly at about 80%                                   recall so we will probably select the precision/recall tradeoff just                                 before that drop.
+    
+         + Side Note: Depending on the situation or your particular need, you may want a threshold                         that delivers higher precision or recall at the expense of the other, for our                         need, we will take a model with the most equal tradeoff.
+
+
+
+
+
+# Robert Covington  
+
+Next, we have Robert Covington. His Over/Under split is at 11.5 Points. 
+
+
+### Exploratory Data Analysis
+```{r}
+
+Covington_data <- read.csv("/Users/matthew_macwan/Downloads/CIS/NBA_Over_Under_Classification/Covington_data.csv", header = TRUE)
+
+Covington_data <- data.frame(Covington_data)
+Covington_data <- na.omit(Covington_data) 
+
+qplot(PTS,X,data=Covington_data)
+
+pairs.panels(Covington_data[2:15])
+pairs.panels(Covington_data[16:29])
+
+Covington_data$Over.Under <- as.integer(Covington_data$Over.Under)
+hist(Covington_data$Over.Under,col="coral")
+prop.table(table(Covington_data$Over.Under))
+
+Covington_data$Over.Under <- as.factor(Covington_data$Over.Under)
+
+  #let's rename the factor levels 
+
+levels(Covington_data$Over.Under) <- c("Under","Over")
+```
+
+
+### Train/Test Split
+```{r}
+
+set.seed(35) 
+
+sample = sample.split(Covington_data$PTS, SplitRatio = .80)
+train_2 = subset(Covington_data, sample == TRUE)
+test_2  = subset(Covington_data, sample == FALSE)
+
+#Cross Validation Set
+
+ctrl <- trainControl(method="cv", number = 5, classProbs=T, savePredictions = T)
+```
+
+
+### Feature Selection
+```{r}
+
+#rank features by importance 
+
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+
+feature_sel <- train(Over.Under~., data=train_2, method="lvq", 
+                     preProcess="scale", trControl=control)
+
+importance <- varImp(feature_sel, scale=FALSE)
+
+print(importance)
+plot(importance)
+```
+
+
+
+```{r}
+#recursive feature elimination
+
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+
+results <- rfe(train_2[c(1:20,23,24,25,26,27,28)], train_2[,29], sizes=c(1:15), 
+               rfeControl=control)
+
+print(results)
+
+predictors(results)
+plot(results, type=c("g", "o"))
+```
+
+
+
+```{r}
+#best subset selection
+
+Cov_bss = regsubsets(Over.Under~. - PTS - X - GmSc, data=train_2, nvmax=7)
+
+summary(Cov_bss)
+```
+#### Analysis
+
+One important takeaway from feature selection is seeing how much more important the opponent defensive stats are in predicting the Over/Under for Covington. This makes sense because role players can usually be shut down by good defensive teams where Damian Lillard is not effected by opponent defensive stats as much since he is one of the top offensive players in the league and is capable of scoring even against the best defensive teams.
+
+### Logistic Regression 
+```{r}
+
+
+lg <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P + Opp_3PT_Made
+            + X3P_Percent, data=train_2, method = "glm", family="binomial",
+            trControl=ctrl, maxit = 100)
+
+print(lg)
+```
+
+```{r}
+
+#let's train the final model on the entire training set and test set 
+
+lg_final=glm(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P + Opp_3PT_Made
+            + X3P_Percent, data=train_2, family=binomial, maxit = 100)
+
+#check the deviance drop off 
+
+anova(lg_final, test="Chisq")
+
+log.probs <- predict(lg_final, test_2, type="response")
+
+predicted = ifelse(log.probs > 0.5,'Over','Under')
+predicted = as.factor(predicted)
+confusionMatrix(test_2$Over.Under,predicted)
+
+```
+#### Analysis 
+
+* Logistic regression model performs perfectly on the data for Robert Covington. 
+
+* Test set accuracy of 1.
+
+### Support Vector Machine
+```{r}
+
+svc <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P + Opp_3PT_Made
+            + X3P_Percent,data=train_2, method="svmLinear",
+            preProcess = c("center","scale"),trControl=ctrl)
+
+print(svc)
+
+#let's perform grid search to find the optimal value for C
+
+grid <- expand.grid(C = c(0,0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 
+                          1.75, 2,5))
+
+svm_grid <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P + Opp_3PT_Made
+            + X3P_Percent, data = train_2, method = "svmLinear", tuneGrid = grid,
+            preProcess = c("center", "scale"),trControl=ctrl)
+
+svm_grid$finalModel
+plot(svm_grid)
+```
+
+
+
+
+```{r}
+#let's train the final model on the entire training set and test set
+
+final_grid <- expand.grid(C = c(0.75))
+
+svm_final <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P + Opp_3PT_Made
+            + X3P_Percent, data = train_2, method = "svmLinear", tuneGrid = final_grid,
+            preProcess = c("center", "scale"))
+
+
+SVM_pred <- predict(svm_final, newdata = test_2)
+confusionMatrix(test_2$Over.Under,SVM_pred)
+```
+#### Analysis 
+
+* Grid search chose the optimal value for C at 0.75. 
+
+* Test set accuracy of 0.9667, performing slightly worse than logistic regression model.
+
+### Decision Tree
+```{r}
+
+dt <- train(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P + Opp_3PT_Made
+            + X3P_Percent,data=train_2, method="rpart",trControl=ctrl)
+
+print(dt)
+
+dt_pred <- predict(dt, newdata = test_2)
+confusionMatrix(test_2$Over.Under,dt_pred)
+
+```
+
+```{r}
+
+#let's plot the tree
+
+Cov.tree=tree(Over.Under~FG +  FTA + FT + FG_Percent + X3PA + FGA + X3P + Opp_3PT_Made
+            + X3P_Percent,train_2)
+
+plot(Cov.tree)
+text(Cov.tree, pretty=0)
+
+```
+#### Analysis 
+
+* Test set accuracy of 0.9333
+
+* Covington's tree is slightly different than Damian Lillard's tree. Here we see that the first split   is at FG 3.5 where Dame was at FG 8.5. Dame's second splits involve FT way more than Covington       which tells us that Damian Lillard relies on getting foul calls to score his points. Covington       relies on free throws less than Dame and we see that hitting some 3 pointers is more of a factor     for him. 
+
+* This makes sense because Robert Covington is a 3 and D player, which means his game revolves around   playing good defense, getting steals, etc. and hitting 3 pointers off a catch and shoot. 
+
+
+### Stochastic Gradient Boost
+```{r}
+
+sgb <- train(Over.Under~.- PTS - X - GmSc,data=train_2,method="gbm",trControl=ctrl)
+
+print(sgb)
+
+```
+
+
+```{r}
+
+#let's train the final model on the entire training set and test set 
+
+final_grid <- expand.grid(n.trees = c(50), 
+                          interaction.depth = c(3),
+                          shrinkage = c(0.1), n.minobsinnode = 10)
+
+sgb_final <- train(Over.Under~.- PTS - X - GmSc - Win_Loss,data=train_2,method="gbm",
+                     tuneGrid = final_grid)
+
+sgb.predict <- predict(sgb_final, newdata = test_2)
+confusionMatrix(test_2$Over.Under,sgb.predict)
+
+sgb_final$finalModel
+
+```
+#### Analysis 
+
+* test set accuracy of 0.933.
+
+* The SGB model did not improve the decision tree. Let's see what a bagging technique like random      forest will do.
+
+
+### Random Forest
+```{r}
+
+rf <- train(Over.Under~.- PTS - X - GmSc - Win_Loss,data=train_2,method="rf",trControl=ctrl)
+
+print(rf)
+
+#let's perform grid search to find more optimal values for 'mtry'
+
+tunegrid <- expand.grid(.mtry = (1:15)) 
+
+rf_grid <- train(Over.Under ~.- PTS - X - GmSc - Win_Loss, data = train_2, method = 'rf',
+                   tuneGrid = tunegrid,trControl=ctrl)
+
+rf_grid$finalModel
+
+```
+
+
+```{r}
+#let's train the final model on the entire training set and test set 
+
+rf_final <- randomForest(Over.Under ~ .- PTS - X - GmSc - Win_Loss, data = train_2, mtry = 13)
+
+rf.predict <- predict(rf_final, test_2, type = "response")
+confusionMatrix(test_2$Over.Under,rf.predict)
+```
+#### Analysis 
+
+* test set accuracy of 0.9667
+
+* The random forest model did improve our model by introducing some randomness.
+
+
+
+
+```{r}
+#let's plot ROC curves of the Decision Tree, SGB and Random Forest to evaluate 
+#how the bagging and boosting techniques improved model performance
+
+roc_plots <- evalm(list(dt,sgb,rf_grid),gnames=c('Decison Tree','Stochastic GB',
+                                                 'Random Forest'))
+```
+### Limitations 
+
+* it's important to keep in mind that we have a small dataset that we are working with here. In my     opinion, increasing the number of game logs should be done before deploying any model similar to     this one, even with cross-validation. 
+
+Realistically, it is impossible to use features such as FG or X3P to make predictions because we don't have the values until after the game is played. 
+
+In order to be profitable in sports betting, we need to have a prediction accuracy at least 55% since the books price bets in a way where the house always make money. 
+
+However, we do have variables like Opp_3PT_Made and Opp_TS available before the game is played and if we are able to get many opponent defensive stats compiled into the spreadsheet, we can create an ensemble that turns these weak learners into a strong learner. 
+
+The issue is that this data collection process is extremely time consuming which is why this dataset only has 4 opponent defensive stats but if anyone does have the time and creates a profitable model, definitely use it to your advantage! It would be a worthwhile experiment.
+
+#### Example:
+
+```{r}
+lg_ex=glm(Over.Under~Opp_TS + Opp_3PT_Made + Opp_TO_per_POS + Opp_Def_Eff, data=train_2, family=binomial, maxit = 100)
+
+#check the deviance drop off 
+
+anova(lg_ex, test="Chisq")
+
+log.probs <- predict(lg_ex, test_2, type="response")
+
+predicted = ifelse(log.probs > 0.5,'Over','Under')
+predicted = as.factor(predicted)
+confusionMatrix(test_2$Over.Under,predicted)
+```
+
+The logistic model has an accuracy of 0.4667 on the test set with 4 opponent defensive stats. It's very possible that creating new variables using feature combination or just adding tons of opponent defensive stats from the web (very time-consuming!!!) can potentially increase this model's accuracy to over 0.55.
+
+
