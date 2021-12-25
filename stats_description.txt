@@ -1,0 +1,66 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2580
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww28600\viewh18000\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 FEATURE DESCRIPTION \
+\
+X : index for each row\
+\
+Win_Loss : whether the team won or loss the game\
+\
+FG : number of shots made by the player in the game\
+\
+FGA : number of shots attempted by the player in the game\
+\
+FG_Percent : number of shots made / number of shots attempted\
+\
+Differential : how much did the team win or lose by \
+\
+X3P : number of three point shots made by the player in the game\
+\
+X3PA : number of three point shots attempted by the player in the game\
+\
+X3P_Percent :  number of three point shots made / number of three point shots attempted \
+\
+FT : number of free throws made by the player in the game\
+\
+FTA : number of free throws attempted by the player in the game\
+\
+FT_Percent : number of free throws made / number of free throws attempted \
+\
+ORB : number of offensive rebounds grabbed by the player \
+\
+DRB : number of defensive rebounds grabbed by the player \
+\
+TRB : total number of rebounds grabbed by the player in the game\
+\
+AST : number of times the player passed the ball to a teammate who scored after receiving the pass\
+\
+STL : number of times the player took the ball from the opposing team\
+\
+BLK : number of times the player blocked the shot of an opposing player \
+\
+TOV : number of times the player lost possession of the ball to the opposing team\
+\
+PF : number of fouls committed by the player in the game\
+\
+PTS : number of points scored by the player in the game\
+\
+GmSc : formula created to give a rough measure of a player\'92s productivity for a single game\
+\
+Plus_Minus : reflects whether the team outscored or was outscored while the player is on the court\
+\
+Postseason : whether this game was a postseason game or regular season game\
+\
+Opp_Def_Eff : average defensive efficiency rating of opposing team\
+\
+Opp_TS : average true shooting percentage of opposing team\
+\
+Opp_TO_per_POS : average number of turnovers per possession caused by the opposing team\
+\
+Opp_3PT_Made : average number of three pointers given up in the whole game by the opposing team\
+\
+}
