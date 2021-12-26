@@ -4,10 +4,14 @@ In this project, I attempt to see how accurately I can predict the Over/Under po
 
 For an in-depth explanation of the project, analysis and takeaways along with the R code and outputs, please click [here](https://htmlpreview.github.io/?https://raw.githubusercontent.com/matthew-macwan/Advanced_Classification_Techniques_in_R/main/Over_Under_Classification.html?token=AVKWQJ5DUQPSLF6RCON464TBY7GSY).
 
-FILE DESCRIPTION 
+### File Description 
 
 - Lillard_data.csv - CSV file containing game logs for Damian Lillard 
 - Covington_data.csv - CSV file containing game logs for Robert Covington 
 - Over_Under_Classification.html - Knitted R output file in HTML format
 - Over_Under_Classification.md - md file containing R code 
 - stats_description.txt - text file containing the feature descriptions for the features in Lillard_data.csv and Covington_data.csv
+
+### Data Science Topics Covered
+
+- data cleaning, exploratory data analysis, data visualization, machine learning, random forest, stochastic gradient boosting, logistic regression, ROC curve, feature selection, subset selection, recursive feature elimination, anova testing
