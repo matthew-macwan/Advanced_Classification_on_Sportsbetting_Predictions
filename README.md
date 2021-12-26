@@ -8,6 +8,6 @@ FILE DESCRIPTION
 
 - Lillard_data.csv - CSV file containing game logs for Damian Lillard 
 - Covington_data.csv - CSV file containing game logs for Robert Covington 
-- Over_Under_Classification.html - Knitted R output file 
+- Over_Under_Classification.html - Knitted R output file in HTML format
 - Over_Under_Classification.md - md file containing R code 
 - stats_description.txt - text file containing the feature descriptions for the features in Lillard_data.csv and Covington_data.csv
