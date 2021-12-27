@@ -12,6 +12,6 @@ For an in-depth explanation of the project, analysis and takeaways along with th
 - Over_Under_Classification.md - md file containing R code 
 - stats_description.txt - text file containing the feature descriptions for the features in Lillard_data.csv and Covington_data.csv
 
-### Data Science Topics Covered
+### Topics Covered
 
 - data cleaning, exploratory data analysis, data visualization, machine learning, random forest, stochastic gradient boosting, logistic regression, ROC curve, feature selection, subset selection, recursive feature elimination, anova testing
