@@ -17,4 +17,4 @@ please click [here](https://htmlpreview.github.io/?https://raw.githubusercontent
 
 ### Topics Covered
 
-- data cleaning, exploratory data analysis, data visualization, machine learning, random forest, stochastic gradient boosting, logistic regression, ROC curve, feature selection, subset selection, recursive feature elimination, anova testing
+- data cleaning, exploratory data analysis, data visualization, machine learning, random forest, stochastic gradient boosting, logistic regression, precision-recall curve, ROC curve, feature selection, subset selection, recursive feature elimination, anova testing
