@@ -5,7 +5,7 @@
 In this project, I attempt to see how accurately I can predict the Over/Under points for two NBA players, Damian Lillard and Robert Covington. Over/Under is a betting term used by sportsbooks where a person can place a bet on whether a player will get over or under X amount of points, assists, rebounds, etc. 
 
 For an in-depth explanation of the project, analysis and takeaways along with the R code and outputs, 
-please click [here](https://htmlpreview.github.io/?https://raw.githubusercontent.com/matthew-macwan/Advanced_Classification_on_Sportsbetting_Predictions/main/Over_Under_Classification.html?token=AVKWQJ5XU7WC7VGE35IRKNDB2CVJU).
+please click [here](https://htmlpreview.github.io/?https://raw.githubusercontent.com/matthew-macwan/Advanced_Classification_on_Sportsbetting_Predictions/main/Over_Under_Classification.html?token=AVKWQJ5XU7WC7VGE35IRKNDB2CVJU). If this link does not work, download the file [here](https://github.com/matthew-macwan/Advanced_Classification_on_Sportsbetting_Predictions/blob/main/Over_Under_Classification.html).
 
 ### File Description 
 
