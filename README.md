@@ -1,4 +1,6 @@
-# Advanced_Classification_Techniques_in_R
+# Advanced Classification on Sports Betting Predictions
+
+### Project Summary 
 
 In this project, I attempt to see how accurately I can predict the Over/Under points for two NBA players, Damian Lillard and Robert Covington. Over/Under is a betting term used by sportsbooks where a person can place a bet on whether a player will get over or under X amount of points, assists, rebounds, etc. 
 
